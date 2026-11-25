@@ -1,0 +1,664 @@
+import { CustomProductWatch, StoreLink, MarketplaceId } from '../types';
+import { 
+  getTelegramConfig, 
+  sendTelegramNotification, 
+  formatMultiStorePriceDropAlert 
+} from './telegramService';
+
+const STORAGE_KEY = 'priceradar_custom_watches';
+
+const INITIAL_WATCHES: CustomProductWatch[] = [
+  {
+    id: 'watch-samsung-z-fold',
+    title: 'Смартфон Samsung Galaxy Z Fold 8 12/256GB Global (Nano-SIM + eSIM)',
+    imageUrl: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=600&auto=format&fit=crop&q=80',
+    category: 'Электроника / Смартфоны / Складные смартфоны',
+    targetPrice: 140000,
+    lowestPrice: 138500,
+    lowestStore: 'Яндекс Маркет',
+    createdAt: '2026-10-17T10:00:00Z',
+    lastCheckedAt: 'Сегодня, 13:40',
+    status: 'active',
+    links: [
+      {
+        id: 'link-fold-yandex',
+        marketplace: 'yandex',
+        storeName: 'Яндекс Маркет (Флагманы)',
+        url: 'https://market.yandex.ru/search?text=Samsung%20Galaxy%20Z%20Fold%20256GB&how=aprice',
+        currentPrice: 138500,
+        oldPrice: 189990,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 13:40',
+        isLowest: true
+      },
+      {
+        id: 'link-fold-megamarket',
+        marketplace: 'megamarket',
+        storeName: 'Мегамаркет (СберСмарт)',
+        url: 'https://megamarket.ru/catalog/?q=Samsung%20Galaxy%20Z%20Fold%20256GB&sort=1',
+        currentPrice: 140130,
+        oldPrice: 194990,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 13:40',
+        isLowest: false
+      },
+      {
+        id: 'link-fold-wb',
+        marketplace: 'wildberries',
+        storeName: 'Wildberries (Электроника РФ)',
+        url: 'https://www.wildberries.ru/catalog/0/search.aspx?search=Samsung%20Galaxy%20Z%20Fold%20256GB',
+        currentPrice: 141980,
+        oldPrice: 199990,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 13:40',
+        isLowest: false
+      },
+      {
+        id: 'link-fold-ozon',
+        marketplace: 'ozon',
+        storeName: 'Ozon (Официальный продавец)',
+        url: 'https://www.ozon.ru/product/samsung-smartfon-galaxy-z-fold-8-global-12-256-gb-nano-sim-esim-cherno-seryy-5013198449/?at=1rmo1U1dnGJhbmndJiotDsDwAfjsx9CI&sh=mSxjM15olw',
+        directSku: '5013198449',
+        currentPrice: 144990,
+        oldPrice: 195740,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 13:40',
+        isLowest: false
+      },
+      {
+        id: 'link-fold-ali',
+        marketplace: 'aliexpress',
+        storeName: 'AliExpress (Global Phone Store)',
+        url: 'https://aliexpress.ru/search?text=Samsung%20Galaxy%20Z%20Fold%20256GB&sortType=price_asc',
+        currentPrice: 142900,
+        oldPrice: 189000,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 13:40',
+        isLowest: false
+      }
+    ],
+    priceHistory: [
+      { timestamp: '15 окт', storeName: 'Ozon', price: 149990, isLowestAcrossAll: false },
+      { timestamp: '16 окт', storeName: 'Wildberries', price: 142260, isLowestAcrossAll: false },
+      { timestamp: 'Сегодня', storeName: 'Яндекс Маркет', price: 138500, isLowestAcrossAll: true }
+    ],
+    alertHistory: []
+  },
+  {
+    id: 'watch-deerma-filter',
+    title: 'Сменный HEPA фильтр для пылесоса Xiaomi Deerma DX700 / DX700S',
+    imageUrl: 'https://basket-02.wbbasket.ru/vol198/part19885/19885235/images/big/1.webp',
+    category: 'Бытовая техника / Аксессуары для пылесосов / Фильтры',
+    targetPrice: 200,
+    lowestPrice: 195,
+    lowestStore: 'AliExpress',
+    createdAt: '2026-10-01T10:00:00Z',
+    lastCheckedAt: 'Сегодня, 10:20',
+    status: 'active',
+    links: [
+      {
+        id: 'link-deerma-ali',
+        marketplace: 'aliexpress',
+        storeName: 'AliExpress (Экспресс РФ)',
+        url: 'https://aliexpress.ru/wholesale?SearchText=%D1%84%D0%B8%D0%BB%D1%8C%D1%82%D1%80+Deerma+DX700',
+        currentPrice: 195,
+        oldPrice: 350,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 10:20',
+        isLowest: true
+      },
+      {
+        id: 'link-deerma-wb',
+        marketplace: 'wildberries',
+        storeName: 'Wildberries (Run Energy)',
+        url: 'https://www.wildberries.ru/catalog/19885235/detail.aspx',
+        directSku: '19885235',
+        currentPrice: 239,
+        oldPrice: 490,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 10:20',
+        isLowest: false
+      },
+      {
+        id: 'link-deerma-ozon',
+        marketplace: 'ozon',
+        storeName: 'Ozon (Магазин фильтров)',
+        url: 'https://www.ozon.ru/product/smennyy-porolonovyy-hepa-filtr-dlya-vertikalnogo-pylesosa-xiaomi-deerma-dx700-dx700s-dx700c-3160195820/?at=1kSn1Op0SAHSEpV9bCGZsmVStDQSc8io&sh=S1Qk9_xTiA',
+        directSku: '3160195820',
+        currentPrice: 248,
+        oldPrice: 520,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 10:20',
+        isLowest: false
+      },
+      {
+        id: 'link-deerma-yandex',
+        marketplace: 'yandex',
+        storeName: 'Яндекс Маркет',
+        url: 'https://market.yandex.ru/search?text=HEPA+%D1%84%D0%B8%D0%BB%D1%8C%D1%82%D1%80+Deerma+DX700',
+        currentPrice: 269,
+        oldPrice: 550,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 10:20',
+        isLowest: false
+      },
+      {
+        id: 'link-deerma-megamarket',
+        marketplace: 'megamarket',
+        storeName: 'Мегамаркет Ритейл',
+        url: 'https://megamarket.ru/catalog/?q=%D1%84%D0%B8%D0%BB%D1%8C%D1%82%D1%80+%D0%B4%D0%BB%D1%8F+%D0%BF%D1%8B%D0%BB%D0%B5%D1%81%D0%BE%D1%81%D0%B0+Deerma+DX700',
+        currentPrice: 279,
+        oldPrice: 560,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 10:20',
+        isLowest: false
+      }
+    ],
+    priceHistory: [
+      { timestamp: '01 окт', storeName: 'AliExpress', price: 195, isLowestAcrossAll: true },
+      { timestamp: '01 окт', storeName: 'Wildberries', price: 239, isLowestAcrossAll: false },
+      { timestamp: '01 окт', storeName: 'Ozon', price: 248, isLowestAcrossAll: false }
+    ],
+    alertHistory: []
+  },
+  {
+    id: 'watch-weissgauff-kettle',
+    title: 'Электрический чайник Weissgauff WK 1711 EcoGlass Filter TempControl',
+    imageUrl: 'https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=600&auto=format&fit=crop&q=80',
+    category: 'Бытовая техника / Техника для кухни / Электрические чайники',
+    targetPrice: 2000,
+    lowestPrice: 2127,
+    lowestStore: 'Ozon',
+    createdAt: '2026-10-02T12:00:00Z',
+    lastCheckedAt: 'Сегодня, 09:45',
+    status: 'active',
+    links: [
+      {
+        id: 'link-kettle-ozon',
+        marketplace: 'ozon',
+        storeName: 'Ozon (Официальный Weissgauff)',
+        url: 'https://www.ozon.ru/product/weissgauff-elektricheskiy-chaynik-wk-1711-ecoglass-filter-tempcontrol-moshchnost-2200-vt-obem-1-4406295778/',
+        directSku: '4406295778',
+        currentPrice: 2127,
+        oldPrice: 4785,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 09:45',
+        isLowest: true
+      },
+      {
+        id: 'link-kettle-ali',
+        marketplace: 'aliexpress',
+        storeName: 'AliExpress (Weissgauff Store)',
+        url: 'https://aliexpress.ru/search?text=Weissgauff%20WK%201711',
+        currentPrice: 2150,
+        oldPrice: 4600,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 09:45',
+        isLowest: false
+      },
+      {
+        id: 'link-kettle-wb',
+        marketplace: 'wildberries',
+        storeName: 'Wildberries (Weissgauff Official)',
+        url: 'https://www.wildberries.ru/catalog/0/search.aspx?search=Weissgauff%20WK%201711',
+        currentPrice: 2190,
+        oldPrice: 4890,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 09:45',
+        isLowest: false
+      },
+      {
+        id: 'link-kettle-yandex',
+        marketplace: 'yandex',
+        storeName: 'Яндекс Маркет',
+        url: 'https://market.yandex.ru/search?text=Weissgauff+WK+1711',
+        currentPrice: 2290,
+        oldPrice: 4990,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 09:45',
+        isLowest: false
+      }
+    ],
+    priceHistory: [
+      { timestamp: '02 окт', storeName: 'Ozon', price: 2127, isLowestAcrossAll: true },
+      { timestamp: '02 окт', storeName: 'Wildberries', price: 2190, isLowestAcrossAll: false }
+    ],
+    alertHistory: []
+  },
+  {
+    id: 'watch-galaxy-watch-8-classic',
+    title: 'Смарт-часы Samsung Galaxy Watch 8 Classic 46mm White (Белый)',
+    imageUrl: 'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=600&auto=format&fit=crop&q=80',
+    category: 'Электроника / Смарт-часы и браслеты / Смарт-часы',
+    targetPrice: 26000,
+    lowestPrice: 26990,
+    lowestStore: 'Яндекс Маркет',
+    createdAt: '2026-10-03T10:00:00Z',
+    lastCheckedAt: 'Сегодня, 14:15',
+    status: 'active',
+    links: [
+      {
+        id: 'link-gw8-yandex',
+        marketplace: 'yandex',
+        storeName: 'Яндекс Маркет (Дистрибьютор)',
+        url: 'https://market.yandex.ru/search?text=Samsung%20Galaxy%20Watch%20Classic%2046mm',
+        currentPrice: 26990,
+        oldPrice: 33990,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 14:15',
+        isLowest: true
+      },
+      {
+        id: 'link-gw8-ali',
+        marketplace: 'aliexpress',
+        storeName: 'AliExpress (Samsung Official)',
+        url: 'https://aliexpress.ru/search?text=Samsung%20Galaxy%20Watch%20Classic%2046mm',
+        currentPrice: 27490,
+        oldPrice: 33490,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 14:15',
+        isLowest: false
+      },
+      {
+        id: 'link-gw8-wb',
+        marketplace: 'wildberries',
+        storeName: 'Wildberries (Электроника РФ)',
+        url: 'https://www.wildberries.ru/catalog/0/search.aspx?search=Samsung%20Galaxy%20Watch%20Classic%2046mm',
+        currentPrice: 27890,
+        oldPrice: 34990,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 14:15',
+        isLowest: false
+      },
+      {
+        id: 'link-gw8-ozon',
+        marketplace: 'ozon',
+        storeName: 'Ozon (Официальный продавец)',
+        url: 'https://www.ozon.ru/product/samsung-smart-chasy-galaxy-watch-8-classic-46mm-white-2596689898/?at=1rqo1W8psAYYwSX95hsvfmIH3CXrFnlJ&sh=mSxjM4wU5A',
+        directSku: '2596689898',
+        currentPrice: 28490,
+        oldPrice: 35990,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 14:15',
+        isLowest: false
+      },
+      {
+        id: 'link-gw8-megamarket',
+        marketplace: 'megamarket',
+        storeName: 'Мегамаркет (СберСмарт)',
+        url: 'https://megamarket.ru/catalog/?q=Samsung%20Galaxy%20Watch%20Classic%2046mm',
+        currentPrice: 29490,
+        oldPrice: 36990,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 14:15',
+        isLowest: false
+      }
+    ],
+    priceHistory: [
+      { timestamp: '14 окт', storeName: 'Ozon', price: 29990, isLowestAcrossAll: false },
+      { timestamp: '15 окт', storeName: 'Wildberries', price: 28190, isLowestAcrossAll: false },
+      { timestamp: 'Сегодня', storeName: 'Яндекс Маркет', price: 26990, isLowestAcrossAll: true }
+    ],
+    alertHistory: []
+  }
+];
+
+export function getCustomWatches(): CustomProductWatch[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed: CustomProductWatch[] = JSON.parse(raw);
+      let modified = false;
+
+      // Авто-миграция старых ссылок с "Fold 8", "Galaxy 256", "Watch 8" или сломанных ссылок
+      parsed.forEach(w => {
+        w.links?.forEach(l => {
+          if (l.url && (l.url.includes('how=aprice') || l.url.includes('sort=1') || l.url.includes('sortType=price_asc'))) {
+            l.url = l.url
+              .replace(/[?&]how=aprice/i, '')
+              .replace(/[?&]sort=1\b/i, '')
+              .replace(/[?&]sortType=price_asc/i, '')
+              .replace(/\?&/, '?');
+            modified = true;
+          }
+          if (l.url && (l.url.includes('Fold%208') || l.url.includes('Fold+8') || l.url.includes('Fold 8') || l.url.includes('Galaxy%20256'))) {
+            if (l.marketplace === 'yandex') {
+              l.url = 'https://market.yandex.ru/search?text=Samsung%20Galaxy%20Z%20Fold%20256GB';
+              modified = true;
+            } else if (l.marketplace === 'wildberries') {
+              l.url = 'https://www.wildberries.ru/catalog/0/search.aspx?search=Samsung%20Galaxy%20Z%20Fold%20256GB';
+              modified = true;
+            } else if (l.marketplace === 'megamarket') {
+              l.url = 'https://megamarket.ru/catalog/?q=Samsung%20Galaxy%20Z%20Fold%20256GB';
+              modified = true;
+            } else if (l.marketplace === 'aliexpress') {
+              l.url = 'https://aliexpress.ru/search?text=Samsung%20Galaxy%20Z%20Fold%20256GB';
+              modified = true;
+            }
+          }
+          if (l.url && (l.url.includes('Watch%208%20Classic') || l.url.includes('Samsung%2046MM') || l.url.includes('Galaxy%2046MM') || l.url.includes('Прямой%20товар'))) {
+            if (l.marketplace === 'yandex') {
+              l.url = 'https://market.yandex.ru/search?text=Samsung%20Galaxy%20Watch%20Classic%2046mm';
+              modified = true;
+            } else if (l.marketplace === 'wildberries') {
+              l.url = 'https://www.wildberries.ru/catalog/0/search.aspx?search=Samsung%20Galaxy%20Watch%20Classic%2046mm';
+              modified = true;
+            } else if (l.marketplace === 'megamarket') {
+              l.url = 'https://megamarket.ru/catalog/?q=Samsung%20Galaxy%20Watch%20Classic%2046mm';
+              modified = true;
+            } else if (l.marketplace === 'aliexpress') {
+              l.url = 'https://aliexpress.ru/search?text=Samsung%20Galaxy%20Watch%20Classic%2046mm';
+              modified = true;
+            }
+          }
+        });
+      });
+
+      if (modified) {
+        saveCustomWatches(parsed);
+      }
+      return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to load custom watches from localStorage', e);
+  }
+  saveCustomWatches(INITIAL_WATCHES);
+  return INITIAL_WATCHES;
+}
+
+export function saveCustomWatches(watches: CustomProductWatch[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(watches));
+  } catch (e) {
+    console.warn('Failed to save custom watches to localStorage', e);
+  }
+}
+
+/**
+ * Добавляет новый товар с набором пользовательских ссылок из разных магазинов
+ */
+export function createCustomWatch(params: {
+  title: string;
+  category?: string;
+  imageUrl?: string;
+  targetPrice?: number;
+  initialLinks: Array<{
+    marketplace: MarketplaceId | 'other';
+    storeName: string;
+    url: string;
+    currentPrice: number;
+  }>;
+}): CustomProductWatch {
+  const watches = getCustomWatches();
+  const id = `watch-${Date.now()}`;
+
+  const links: StoreLink[] = params.initialLinks.map((l, idx) => ({
+    id: `link-${id}-${idx}`,
+    marketplace: l.marketplace,
+    storeName: l.storeName,
+    url: l.url,
+    currentPrice: l.currentPrice,
+    oldPrice: l.currentPrice,
+    inStock: true,
+    lastCheckedAt: 'Только что',
+    isLowest: false
+  }));
+
+  // Находим минимальную цену среди всех ссылок
+  let lowestPrice = Infinity;
+  let lowestStore = '';
+  links.forEach(l => {
+    if (l.currentPrice < lowestPrice) {
+      lowestPrice = l.currentPrice;
+      lowestStore = l.storeName;
+    }
+  });
+
+  links.forEach(l => {
+    l.isLowest = l.currentPrice === lowestPrice;
+  });
+
+  const newWatch: CustomProductWatch = {
+    id,
+    title: params.title.trim(),
+    category: params.category || 'Товары для мониторинга',
+    imageUrl: params.imageUrl || 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=600&auto=format&fit=crop&q=80',
+    targetPrice: params.targetPrice || null,
+    links,
+    lowestPrice: lowestPrice === Infinity ? 0 : lowestPrice,
+    lowestStore,
+    createdAt: new Date().toISOString(),
+    lastCheckedAt: 'Только что',
+    status: 'active',
+    priceHistory: [
+      {
+        timestamp: 'Сегодня',
+        storeName: lowestStore,
+        price: lowestPrice,
+        isLowestAcrossAll: true
+      }
+    ],
+    alertHistory: []
+  };
+
+  watches.unshift(newWatch);
+  saveCustomWatches(watches);
+  return newWatch;
+}
+
+/**
+ * Добавляет новую ссылку на магазин в существующий товар
+ */
+export function addStoreLinkToWatch(
+  watchId: string,
+  linkData: {
+    marketplace: MarketplaceId | 'other';
+    storeName: string;
+    url: string;
+    currentPrice: number;
+    directSku?: string;
+  }
+): CustomProductWatch | null {
+  const watches = getCustomWatches();
+  const watch = watches.find(w => w.id === watchId);
+  if (!watch) return null;
+
+  const newLink: StoreLink = {
+    id: `link-${watchId}-${Date.now()}`,
+    marketplace: linkData.marketplace,
+    storeName: linkData.storeName,
+    url: linkData.url,
+    currentPrice: linkData.currentPrice,
+    oldPrice: linkData.currentPrice,
+    inStock: true,
+    lastCheckedAt: 'Только что',
+    directSku: linkData.directSku,
+    isLowest: false
+  };
+
+  watch.links.push(newLink);
+
+  // Пересчитываем минимум
+  let min = Infinity;
+  let minStore = '';
+  watch.links.forEach(l => {
+    if (l.currentPrice < min) {
+      min = l.currentPrice;
+      minStore = l.storeName;
+    }
+  });
+  watch.lowestPrice = min;
+  watch.lowestStore = minStore;
+  watch.links.forEach(l => {
+    l.isLowest = l.currentPrice === min;
+  });
+
+  saveCustomWatches(watches);
+  return watch;
+}
+
+/**
+ * Удаляет ссылку из товара
+ */
+export function removeStoreLinkFromWatch(watchId: string, linkId: string): CustomProductWatch | null {
+  const watches = getCustomWatches();
+  const watch = watches.find(w => w.id === watchId);
+  if (!watch) return null;
+
+  watch.links = watch.links.filter(l => l.id !== linkId);
+
+  // Пересчитываем минимум
+  if (watch.links.length > 0) {
+    let min = Infinity;
+    let minStore = '';
+    watch.links.forEach(l => {
+      if (l.currentPrice < min) {
+        min = l.currentPrice;
+        minStore = l.storeName;
+      }
+    });
+    watch.lowestPrice = min;
+    watch.lowestStore = minStore;
+    watch.links.forEach(l => {
+      l.isLowest = l.currentPrice === min;
+    });
+  }
+
+  saveCustomWatches(watches);
+  return watch;
+}
+
+/**
+ * Обновляет цену конкретного магазина и запускает сравнение со всеми остальными магазинами.
+ * Если цена ниже, чем во ВСЕХ остальных магазинах — отправляет сигнал в Telegram!
+ */
+export async function updateStorePriceAndCheckAlert(
+  watchId: string,
+  linkId: string,
+  newPrice: number,
+  isSimulation = false
+): Promise<{ watch: CustomProductWatch; alertSent: boolean; message?: string }> {
+  const watches = getCustomWatches();
+  const watch = watches.find(w => w.id === watchId);
+  if (!watch) throw new Error('Товар не найден');
+
+  const link = watch.links.find(l => l.id === linkId);
+  if (!link) throw new Error('Ссылка магазина не найдена');
+
+  const oldPrice = link.currentPrice;
+  link.oldPrice = oldPrice;
+  link.currentPrice = newPrice;
+  link.lastCheckedAt = 'Только что';
+
+  // 1. Проверяем цены во всех ОСТАЛЬНЫХ магазинах этого товара
+  const competitorLinks = watch.links.filter(l => l.id !== linkId && l.inStock);
+  const bestCompetitor = competitorLinks.reduce(
+    (min, curr) => (curr.currentPrice < min.currentPrice ? curr : min),
+    competitorLinks[0]
+  );
+
+  const bestCompetitorPrice = bestCompetitor ? bestCompetitor.currentPrice : Infinity;
+  const isLowerThanAllOthers = newPrice < bestCompetitorPrice;
+  const hasPriceDropped = newPrice < oldPrice;
+
+  // Обновляем общий минимум карточки
+  let overallMin = Infinity;
+  let overallMinStore = '';
+  watch.links.forEach(l => {
+    if (l.currentPrice < overallMin) {
+      overallMin = l.currentPrice;
+      overallMinStore = l.storeName;
+    }
+  });
+  watch.lowestPrice = overallMin;
+  watch.lowestStore = overallMinStore;
+  watch.links.forEach(l => {
+    l.isLowest = l.currentPrice === overallMin;
+  });
+
+  // Записываем точку в историю
+  watch.priceHistory.push({
+    timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+    storeName: link.storeName,
+    price: newPrice,
+    isLowestAcrossAll: isLowerThanAllOthers
+  });
+
+  let alertSent = false;
+  let alertMessage = '';
+
+  const tgConfig = getTelegramConfig();
+
+  // КЛЮЧЕВОЕ УСЛОВИЕ ПОЛЬЗОВАТЕЛЯ:
+  // "в случае просадки цены в каком-то месте магазине идёт сравнение цены с другими магазинами,
+  // если цена ниже чем везде то приходит сигнал в телеграмм бот о понижении цены"
+  if (hasPriceDropped && isLowerThanAllOthers && tgConfig.isEnabled && tgConfig.botToken && tgConfig.chatId) {
+    const formattedAlert = formatMultiStorePriceDropAlert({
+      productTitle: watch.title,
+      droppedStore: link.storeName,
+      newPrice,
+      oldPrice,
+      bestCompetitorStore: bestCompetitor?.storeName || 'Другие магазины',
+      bestCompetitorPrice: bestCompetitorPrice === Infinity ? oldPrice : bestCompetitorPrice,
+      allStorePrices: watch.links.map(l => ({
+        store: l.storeName,
+        price: l.currentPrice,
+        isWinner: l.id === link.id
+      })),
+      productUrl: link.url,
+      isSimulation
+    });
+
+    const sendRes = await sendTelegramNotification(formattedAlert);
+    alertSent = sendRes.success;
+
+    const savings = bestCompetitorPrice === Infinity ? oldPrice - newPrice : bestCompetitorPrice - newPrice;
+
+    watch.alertHistory.unshift({
+      id: `alert-${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+      storeName: link.storeName,
+      newPrice,
+      oldPrice,
+      savingsVsCompetitor: savings,
+      message: `${isSimulation ? '[ТЕСТ] ' : ''}Цена в ${link.storeName} (${newPrice.toLocaleString('ru-RU')} ₽) стала самой низкой среди всех ваших магазинов! Экономия ${savings.toLocaleString('ru-RU')} ₽!`,
+      telegramSent: alertSent
+    });
+
+    alertMessage = alertSent 
+      ? `Сигнал успешно отправлен в Telegram бот!` 
+      : `Цена ниже всех, но ошибка Telegram: ${sendRes.error}`;
+  } else if (hasPriceDropped && !isLowerThanAllOthers) {
+    alertMessage = `Цена в ${link.storeName} снизилась до ${newPrice.toLocaleString('ru-RU')} ₽, но в ${bestCompetitor?.storeName} всё еще дешевле (${bestCompetitor?.currentPrice.toLocaleString('ru-RU')} ₽). Сигнал не отправлен, так как цена не является абсолютным минимумом среди всех магазинов.`;
+  }
+
+  watch.lastCheckedAt = 'Только что';
+  saveCustomWatches(watches);
+
+  return { watch, alertSent, message: alertMessage };
+}
+
+/**
+ * Симулирует просадку цены в выбранном магазине для моментальной проверки работы Telegram-бота
+ */
+export async function simulatePriceDropInStore(
+  watchId: string,
+  linkId: string,
+  dropPercent = 15
+): Promise<{ watch: CustomProductWatch; alertSent: boolean; message?: string }> {
+  const watches = getCustomWatches();
+  const watch = watches.find(w => w.id === watchId);
+  if (!watch) throw new Error('Товар не найден');
+
+  const link = watch.links.find(l => l.id === linkId);
+  if (!link) throw new Error('Магазин не найден');
+
+  // Рассчитываем цену так, чтобы она гарантированно стала ниже всех конкурентов
+  const competitorPrices = watch.links.filter(l => l.id !== linkId).map(l => l.currentPrice);
+  const minCompetitor = competitorPrices.length > 0 ? Math.min(...competitorPrices) : link.currentPrice;
+  
+  // Делаем цену на dropPercent ниже самого дешевого конкурента
+  const targetDroppedPrice = Math.max(100, Math.round((minCompetitor * (1 - dropPercent / 100)) / 10) * 10);
+
+  return updateStorePriceAndCheckAlert(watchId, linkId, targetDroppedPrice, true);
+}
